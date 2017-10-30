@@ -203,7 +203,7 @@ def getIssueCount(repository):
 
 #=====================================================================================
 if __name__ == '__main__':
-    print("Скрипт для анализа репозитория", Configurator.REPO_NAME)
+    print("Скрипт для анализа репозитория " + Configurator.REPO_NAME)
 
     print("1)Самые активные участники")
 
@@ -213,20 +213,20 @@ if __name__ == '__main__':
     print("2)Количество​​ открытых​​ и​​ закрытых​​ pull​​ requests")
 
     op, cl = getPullRequestsCount(Configurator.REPO_NAME)
-    print("Открырые pull requests -",op)
-    print("Закрытые pull requests -",cl)
+    print("Открырые pull requests -" + str(op))
+    print("Закрытые pull requests -" + str(cl))
 
     print("3)Количество старых pull requests")
-    print("Старые (не закрытые более 30 дней)-",OldPullRequestCount(Configurator.REPO_NAME))
+    print("Старые (не закрытые более 30 дней)-"+ str(OldPullRequestCount(Configurator.REPO_NAME)))
 
     print("4)Колличество открытых и закрытых issues")
 
     opened, closed = getIssueCount(Configurator.REPO_NAME)
-    print("Открырые issues -",opened)
-    print("Закрытые issues -",closed)
+    print("Открырые issues -" + str(opened))
+    print("Закрытые issues -" + str(closed))
 
     print("5)Колличество старых issues (не закрытых в течении 14 дней)")
-    print("Старые issues -",getOldIssues(Configurator.REPO_NAME))
+    print("Старые issues -" + str(getOldIssues(Configurator.REPO_NAME)))
 
 
 """
