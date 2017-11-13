@@ -2,235 +2,278 @@
 
 from config import Configurator
 from datetime import datetime
-import json
+
 import requests
 import texttable as tt
 
-def getPagesCount(repository,parametr):
-	"""
-	Данная функция возвращает общее колличество страниц параметра для указаного репозитория
-	Входные параметры:
-	repository - репозиторий для поиска
-	Выходные параметры:
-	countElement - колличество страниц
-	"""
-	
-	countElement = 0
-	url = "https://api.github.com/repos/"+ repository +"/" + parametr +"?q=&page=1&per_page=100&state=all"
-	r = requests.get(url).json()
-	
-	while len(r) == 100:
-		countElement += 1
-		url = "https://api.github.com/repos/"+ repository +"/pulls?q=&page="+ str(countElement) +"&per_page=100&state=all"
-		r = requests.get(url).json()
+from timeit import default_timer as timer
 
-	return countElement
 
-def isOld(created_at,closed_at,daysCount):
-	"""
-	Данная функция проверяет параметр на старость.
-	Параметр считается старым, если он не закрывается​ в ​течение​ daysCount дней.
-	Входные параметры
-	created_at
-	closed_at
-	daysCount
-	Выходные параметры
-	True or False в зависимости от старости параметра
-	"""
-	cr_date = created_at.split("T")[0]
-	cl_date = closed_at.split("T")[0]
+def print_table(logins, commits):
+    """Функция по данным двум спискам строит консольную таблицу"""
 
-	cr_date = datetime.strptime(cr_date, "%Y-%m-%d")
-	cl_date = datetime.strptime(cl_date, "%Y-%m-%d")
+    tab = tt.Texttable()
+    x = [[]]
+    for i in range(0, 30):
+        x.append([i+1, logins[i], commits[i]])
 
-	if (cl_date - cr_date).days > daysCount:
-		return True
-	else:
-		return False
+    tab.add_rows(x)
+    tab.set_cols_align(['r', 'r', 'r'])
 
-def printTable(logins,commits):
-	"""
-	"""
-	tab = tt.Texttable()
-	x = [[]]
-	for i in range(0,30):
-		x.append([i+1,logins[i],commits[i]])
+    tab.header(['Место', 'Логин', 'Колличество коммитов'])
 
-	tab.add_rows(x)
-	tab.set_cols_align(['r','r','r'])
+    print(tab.draw())
 
-	tab.header(['Место', 'Логин', 'Колличество коммитов'])
 
-	print(tab.draw())
 
-def getPopularContributor(repository):
-	"""
-	Данная функция возвращает 30 самых активных участников репозитория. 
-	Активность определяется по колличеству коммитов.
-	Входные параметры:
-	repository - репозиторий для поиска
-	Выходные параметры:
-	authors - список авторов коммитов 
-	commits - колличество коммитов каждого автора
-	"""
-	authors = []
-	commits = []
+def is_old(created_at, closed_at, days_count):
+    """Данная функция проверяет параметр на старость.
+    Параметр считается старым, если не закрывается​ в ​течение​ days_count.
+    Входные параметры
+    created_at
+    closed_at
+    days_count
+    Выходные параметры
+    True or False в зависимости от старости параметра
 
-	url = "https://api.github.com/repos/" + repository + "/stats/contributors"
-	r = requests.get(url).json()
+    """
+    cr_date = created_at.split("T")[0]
+    cl_date = closed_at.split("T")[0]
 
-	for i in range(0,100):
-		authors.append(str(r[i]["author"]["login"]))
-		commits.append(int(r[i]["total"]))
+    cr_date = datetime.strptime(cr_date, "%Y-%m-%d")
+    cl_date = datetime.strptime(cl_date, "%Y-%m-%d")
 
-	authors.reverse()
-	commits.reverse()
+    if (cl_date - cr_date).days > days_count:
+        return True
+    else:
+        return False
 
-	authors = authors[:30]
-	commits = commits[:30]
 
-	return authors,commits
+def get_popular_contributor(repository):
+    """Данная функция возвращает 30 самых активных участников репозитория.
+    Активность определяется по колличеству коммитов.
+    Входные параметры:
+    repository - репозиторий для поиска
+    Выходные параметры:
+    authors - список авторов коммитов
+    commits - колличество коммитов каждого автора
+
+
+    """
+
+    authors = []
+    commits = []
+
+    url = "https://api.github.com/repos/" + repository + "/stats/contributors"
+    r = requests.get(url).json()
+
+    for i in range(0, len(r)):
+        authors.append(str(r[i]["author"]["login"]))
+        commits.append(int(r[i]["total"]))
+
+    authors.reverse()
+    commits.reverse()
+
+    authors = authors[:30]
+    commits = commits[:30]
+
+    return authors, commits
+
 
 def getPullRequestsCount(repository):
-	"""
-	Данная фкнкция открытых и закрытых pull request.
-	Входные параметры:
-	repository - репозиторий для поиска
-	Выходные параметры:
-	openCount - котлличество открытых issues
-	closeCount - колличество закрытых issues
-	"""
-	
-	openCount = 0
-	closeCount = 0
 
-	pages = getPagesCount(repository,"pulls")
+    """Данная фкнкция открытых и закрытых pull request.
+    Входные параметры:
+    repository - репозиторий для поиска
+    Выходные параметры:
+    open_count - котлличество открытых issues
+    close_count - колличество закрытых issues
 
-	for i in range(1,(pages + 1)):
-		url = "https://api.github.com/repos/"+ repository +"/pulls?q=&page=" + str(i) + "&per_page=100&state=all"
-		r = requests.get(url).json()
+    """
 
-		for param in range(0,len(r)):
-			if str(r[param]["state"]) == "open":
-				openCount += 1
-			elif str(r[param]["state"]) == "closed":
-				closeCount += 1
+    open_count = 0
+    close_count = 0
+    page_number = 1
 
-	return openCount,closeCount
+    url = "https://api.github.com/repos/" + repository + "/pulls?q=&page="\
+        + str(page_number) + "&per_page=100&state=all"
+
+    r = requests.get(url).json()
+
+    while len(r) == 100:
+
+        for param in range(0, len(r)):
+
+            if str(r[param]["state"]) == "open":
+                open_count += 1
+
+            elif str(r[param]["state"]) == "closed":
+                close_count += 1
+
+        page_number += 1
+
+        url = "https://api.github.com/repos/" + repository + "/pulls?q=&page="\
+            + str(page_number) + "&per_page=100&state=all"
+
+        r = requests.get(url).json()
+
+    for param in range(0, len(r)):
+
+        if str(r[param]["state"]) == "open":
+            open_count += 1
+
+        elif str(r[param]["state"]) == "closed":
+            close_count += 1
+
+    return open_count, close_count
 
 
+def old_pull_request_count(repository):
+    """Данная функция позволяет получить колличество старых pull request.
+    Pull request старый, если он не закрывается​ в ​течение​ ​30​ ​дней.
+    Входные параметры:
+    repository - репозиторий для поиска
+    Выходные параметры:
+    counterOldPull - колличество старых pull request
+    """
 
-def OldPullRequestCount(repository):
-	"""
-	Данная функция позволяет получить колличество старых pull request.
-	Pull request считается старым, если он не закрывается​ ​ в ​ ​ течение​ ​ 30​ ​ дней.
-	Входные параметры:
-	repository - репозиторий для поиска
-	Выходные параметры:
-	counterOldPull - колличество старых pull request
-	"""
+    counter_old_pull = 0
+    page_number = 1
 
-	counterOldPull = 0
+    url = "https://api.github.com/repos/" + repository + "/pulls?q=&page="\
+        + str(page_number) + "&per_page=100&state=all"
 
-	pages = getPagesCount(repository,"pulls")
+    r = requests.get(url).json()
 
-	for i in range(1,(pages + 1)):
-		url = "https://api.github.com/repos/"+ repository +"/pulls?q=&page=" + str(i) + "&per_page=100&state=all"
-		r = requests.get(url).json()
+    while len(r) == 100:
 
-		for param in range(0,len(r)):
+        for param in range(0, len(r)):
 
-			created = str(r[param]["created_at"])
-			closed = str(r[param]["closed_at"])
+            created = str(r[param]["created_at"])
+            closed = str(r[param]["closed_at"])
 
-			if created == "None" or closed == "None":
-				continue
-			elif isOld(created,closed,30) == True:
-				counterOldPull += 1
+            if created == "None" or closed == "None":
+                continue
 
-	return counterOldPull
+            elif is_old(created, closed, 30):
+                counter_old_pull += 1
+
+        page_number += 1
+
+        url = "https://api.github.com/repos/" + repository + "/pulls?q=&page="\
+            + str(page_number) + "&per_page=100&state=all"
+
+        r = requests.get(url).json()
+
+        for param in range(0, len(r)):
+
+            created = str(r[param]["created_at"])
+            closed = str(r[param]["closed_at"])
+
+            if created == "None" or closed == "None":
+                continue
+
+            elif is_old(created, closed, 30):
+                counter_old_pull += 1
+
+    return counter_old_pull
+
+
+def getIssueCount(repository):
+    """Данная фкнкция открытых и закрытых issues.
+    Входные параметры:
+    repository - репозиторий для поиска
+    Выходные параметры:
+    opened - котлличество открытых issues
+    closed - колличество закрытых issues
+    (opened + closed) - и открытые и закрытые
+
+    """
+
+    url = "https://api.github.com/search/issues?q=repo:" + repository\
+        + "+state:open&sort=created&order=asc&page=1&per_page=100"
+
+    r = requests.get(url).json()
+    opened = int(r['total_count'])
+
+    url = "https://api.github.com/search/issues?q=repo:" + repository\
+        + "+state:closed&sort=created&order=asc&page=1&per_page=100"
+
+    r = requests.get(url).json()
+    closed = int(r['total_count'])
+
+    return opened, closed
 
 
 def getOldIssues(repository):
-	"""
-	Данная функция врзвращает Количество “старых” issues.
-	Issue считается старым, если он не закрывается в течение​​ 14​​ дней.
-	Входные параметры:
-	repository - репозиторий для поиска
-	Выходные параметры:
-	oldIssuesCount - Количество старых issues
-	"""
+    """Данная функция врзвращает Количество “старых” issues.
+    Issue считается старым, если он не закрывается в течение​​ 14​​ дней.
+    Входные параметры:
+    repository - репозиторий для поиска
+    Выходные параметры:
+    old_issues_count - Количество старых issues
 
-	oldIssuesCount = 0
+    """
 
-	pages = getPagesCount(repository,"issues")
-	
-	for i in range(1,(pages + 1)):
-		url = "https://api.github.com/repos/"+ repository +"/issues?q=&page=" + str(i) + "&per_page=100&state=all"
-		r = requests.get(url).json()
+    old_issues_count = 0
 
-		for param in range(0,len(r)):
-			created = str(r[param]["created_at"])
-			closed = str(r[param]["closed_at"])
+    opened_issues, closed_issues = getIssueCount(repository)
 
-			if created == "None" or closed == "None":
-				continue
-			elif isOld(created,closed,14) == True:
-				oldIssuesCount += 1
+    pages = ((opened_issues + closed_issues) // 100) + 1  # Получение
+    # колличества страниц исходя из колличества открытых и закрытых issues
 
-	return oldIssuesCount
+    for i in range(1, (pages + 1)):
+        url = "https://api.github.com/repos/" + repository +\
+            "/issues?q=&page=" + str(i) + "&per_page=100&state=all"
 
-def getIssueCount(repository):
-	"""
-	Данная фкнкция открытых и закрытых issues.
-	Входные параметры:
-	repository - репозиторий для поиска
-	Выходные параметры:
-	opened - котлличество открытых issues
-	closed - колличество закрытых issues
-	(opened + closed) - и открытые и закрытые
+        r = requests.get(url).json()
 
-	"""
-	url = "https://api.github.com/search/issues?q=repo:" + repository + "+state:open&sort=created&order=asc&page=1&per_page=100"
-	r = requests.get(url).json()
-	opened = int(r['total_count'])
+        for param in range(0, len(r)):
+            created = str(r[param]["created_at"])
+            closed = str(r[param]["closed_at"])
 
-	url = "https://api.github.com/search/issues?q=repo:" + repository + "+state:closed&sort=created&order=asc&page=1&per_page=100"
-	r = requests.get(url).json()
-	closed = int(r['total_count'])
+            if created == "None" or closed == "None":
+                continue
 
-	return opened,closed
+            elif is_old(created, closed, 14):
+                old_issues_count += 1
 
-#=====================================================================================
+    return old_issues_count
+
+
 if __name__ == '__main__':
+
+    start = timer()
+
     print("Скрипт для анализа репозитория " + Configurator.REPO_NAME)
 
-    print("1)Самые активные участники")
+    print("Самые активные участники")
 
-    logins,commits = getPopularContributor(Configurator.REPO_NAME)
-    printTable(logins,commits)
+    logins, commits = get_popular_contributor(Configurator.REPO_NAME)
 
-    print("2)Количество​​ открытых​​ и​​ закрытых​​ pull​​ requests")
+    print_table(logins, commits)
+
+    print("Количество​​ открытых​​ и​​ закрытых​​ pull​​ requests")
 
     op, cl = getPullRequestsCount(Configurator.REPO_NAME)
     print("Открырые pull requests -" + str(op))
     print("Закрытые pull requests -" + str(cl))
 
-    print("3)Количество старых pull requests")
-    print("Старые (не закрытые более 30 дней)-"+ str(OldPullRequestCount(Configurator.REPO_NAME)))
+    print("Количество старых pull requests")
 
-    print("4)Колличество открытых и закрытых issues")
+    print("Старые (не закрытые более 30 дней)-" + str(old_pull_request_count(
+            Configurator.REPO_NAME)))
+
+    print("Колличество открытых и закрытых issues")
 
     opened, closed = getIssueCount(Configurator.REPO_NAME)
+
     print("Открырые issues -" + str(opened))
     print("Закрытые issues -" + str(closed))
 
-    print("5)Колличество старых issues (не закрытых в течении 14 дней)")
+    print("Колличество старых issues (не закрытых в течении 14 дней)")
+
     print("Старые issues -" + str(getOldIssues(Configurator.REPO_NAME)))
 
-
-"""
-При привышении колличества неавторизованых запросов получается следующее сообщение:
-
-"API rate limit exceeded for X.X.X.X. (But here's the good news: Authenticated requests get a higher rate limit. Check out the documentation for more details.)"
-"""
+    end = timer()
+    print("Exec time -", end - start)
